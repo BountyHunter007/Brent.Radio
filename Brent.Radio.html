@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PULSE FM - 24/7 Broadcast Studio</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            neonCyan: '#00f3ff',
+            neonPink: '#ff007f',
+            neonAmber: '#ffaa00',
+            darkBg: '#080a0f',
+            panelBg: 'rgba(15, 20, 32, 0.85)',
+            adminBg: 'rgba(25, 18, 38, 0.85)'
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Orbitron', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(10, 15, 26, 0.6); }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 243, 255, 0.3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 243, 255, 0.7); }
+
+    /* Range Slider */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+      height: 5px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 14px;
+      width: 14px;
+      border-radius: 50%;
+      background: #00f3ff;
+      cursor: pointer;
+      box-shadow: 0 0 8px #00f3ff;
+      transition: transform 0.1s ease-in-out;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.25); }
+
+    /* Glowing Neon Elements */
+    .glow-cyan { box-shadow: 0 0 15px rgba(0, 243, 255, 0.35); }
+    .glow-pink { box-shadow: 0 0 15px rgba(255, 0, 127, 0.35); }
+    .glow-red { box-shadow: 0 0 18px rgba(239, 68, 68, 0.6); }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.96); opacity: 0.9; }
+      50% { transform: scale(1.08); opacity: 0.5; }
+      100% { transform: scale(0.96); opacity: 0.9; }
+    }
+    .pulse-dot { animation: pulse-ring 1.8s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-darkBg text-gray-100 font-sans min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-neonCyan selection:text-black">
+
+  <!-- Background Ambient Canvas -->
+  <canvas id="bgCanvas" class="fixed inset-0 w-full h-full pointer-events-none z-0 opacity-30"></canvas>
+
+  <!-- Top Header & Station Banner -->
+  <header class="relative z-10 w-full border-b border-cyan-900/40 backdrop-blur-md bg-darkBg/90 px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-neonCyan via-indigo-600 to-neonPink p-0.5 glow-cyan">
+        <div class="w-full h-full bg-darkBg rounded-[10px] flex items-center justify-center">
+          <i class="fa-solid fa-tower-broadcast text-neonCyan text-lg"></i>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-display font-black text-xl sm:text-2xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-neonCyan via-white to-neonPink">
+            PULSE<span class="text-neonCyan">FM</span>
+          </h1>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-bold">104.8 MHZ</span>
+        </div>
+        <p class="text-[11px] text-gray-400 font-mono tracking-widest uppercase">24/7 Global Audio Stream</p>
+      </div>
+    </div>
+
+    <!-- Live Broadcast Sign & Listener Stats -->
+    <div class="flex items-center space-x-3 sm:space-x-5 text-sm">
+      <div class="flex items-center space-x-2 bg-red-950/80 border border-red-500/60 px-3.5 py-1 rounded-md glow-red">
+        <span class="w-2.5 h-2.5 bg-red-500 rounded-full pulse-dot"></span>
+        <span class="font-display font-black text-xs tracking-widest text-red-400 uppercase">ON AIR</span>
+      </div>
+
+      <div class="hidden sm:flex items-center space-x-2 text-gray-300 bg-slate-900/70 px-3 py-1 rounded-full border border-gray-800">
+        <i class="fa-solid fa-headphones text-neonCyan text-xs"></i>
+        <span id="listenerCount" class="font-mono text-xs text-cyan-300 font-bold">1,842</span>
+        <span class="text-xs text-gray-400">Tuned In</span>
+      </div>
+
+      <!-- Role Switcher & Auth Trigger -->
+      <div class="flex items-center bg-gray-900 p-1 rounded-xl border border-gray-800">
+        <button id="viewListenerBtn" class="px-3 py-1 text-xs rounded-lg font-medium transition text-white bg-cyan-950 border border-cyan-700/60">
+          <i class="fa-solid fa-user text-xs mr-1"></i> Listener
+        </button>
+        <button id="viewAdminBtn" class="px-3 py-1 text-xs rounded-lg font-medium text-gray-400 hover:text-white transition">
+          <i class="fa-solid fa-lock text-xs mr-1" id="adminLockIcon"></i> Admin DJ
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Admin Login Auth Modal -->
+  <div id="authModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-panelBg border border-pink-500/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative glow-pink">
+      <button id="closeAuthModal" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+      <div class="text-center mb-5">
+        <div class="w-12 h-12 rounded-full bg-pink-950/80 border border-pink-500/50 text-neonPink flex items-center justify-center mx-auto mb-2">
+          <i class="fa-solid fa-key text-xl"></i>
+        </div>
+        <h3 class="font-display font-bold text-lg text-white">Admin DJ Console Passcode</h3>
+        <p class="text-xs text-gray-400 mt-1">Enter passcode to unlock upload & station control privileges.</p>
+        <span class="inline-block mt-2 text-[10px] font-mono text-pink-400 bg-pink-950/60 px-2.5 py-0.5 rounded border border-pink-800/40">Demo Passcode: admin123</span>
+      </div>
+      <form id="authForm" class="space-y-4">
+        <div>
+          <input type="password" id="passcodeInput" placeholder="Enter passcode..." class="w-full bg-darkBg border border-gray-700 focus:border-neonPink rounded-xl px-4 py-2.5 text-sm text-center tracking-widest text-white outline-none transition">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-neonPink to-purple-600 font-display text-xs font-bold tracking-wider text-white rounded-xl hover:opacity-90 transition glow-pink">
+          UNLOCK DJ CONSOLE
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Broadcast Content Grid -->
+  <main class="relative z-10 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+
+    <!-- Left & Center Studio Columns (8 Cols) -->
+    <section class="lg:col-span-8 flex flex-col gap-6">
+
+      <!-- Station Main Broadcast Player -->
+      <div class="bg-panelBg border border-cyan-900/30 backdrop-blur-xl rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+        <!-- Live Station Stream Header -->
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-mono text-neonCyan uppercase tracking-widest">Now Broadcasting</span>
+              <span id="currentShowBadge" class="text-[10px] font-mono bg-purple-950/80 border border-purple-600/50 text-purple-300 px-2 py-0.5 rounded">Cyber Synthwave Mix</span>
+            </div>
+            <h2 id="currentTrackTitle" class="font-display text-xl sm:text-2xl font-bold text-white truncate max-w-xs sm:max-w-lg mt-0.5">
+              PULSE 24/7 Automated Backup Radio
+            </h2>
+            <p id="currentTrackArtist" class="text-xs text-gray-400 truncate">Procedural Web Audio Synthesizer Engine</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="visModeBtn" title="Change Spectrum Visualizer Mode" class="px-3 py-1.5 rounded-lg bg-gray-800/80 border border-gray-700/80 hover:border-neonCyan text-cyan-400 text-xs font-mono transition">
+              <i class="fa-solid fa-wave-square mr-1"></i> <span id="visModeText">BARS</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Audio FFT Visualizer Canvas -->
+        <div class="relative w-full h-56 sm:h-64 rounded-xl bg-darkBg/95 border border-cyan-950 overflow-hidden flex items-center justify-center">
+          <canvas id="visualizerCanvas" class="w-full h-full"></canvas>
+          
+          <!-- Direct Tune-In Play Button Overlay -->
+          <div id="playOverlay" class="absolute inset-0 bg-darkBg/85 flex flex-col items-center justify-center z-20 backdrop-blur-sm transition-opacity">
+            <button id="startStreamBtn" class="px-7 py-3.5 rounded-full bg-gradient-to-r from-neonCyan via-cyan-400 to-neonPink text-darkBg font-display font-black tracking-widest hover:scale-105 transition glow-cyan flex items-center gap-3">
+              <i class="fa-solid fa-radio text-lg"></i> TUNE INTO 24/7 LIVE STREAM
+            </button>
+            <p class="text-xs text-gray-400 mt-3">Click to sync live Web Audio receiver</p>
+          </div>
+        </div>
+
+        <!-- Track Time Progress Bar -->
+        <div class="mt-4 space-y-1">
+          <div class="flex justify-between text-xs font-mono text-gray-400">
+            <span id="currentTime">00:00</span>
+            <span id="durationTime">24/7 Continuous</span>
+          </div>
+          <div class="relative w-full h-2 bg-gray-800/80 rounded-full overflow-hidden cursor-pointer group/progress" id="progressBarContainer">
+            <div id="progressBar" class="h-full bg-gradient-to-r from-neonCyan via-purple-500 to-neonPink w-0 rounded-full relative"></div>
+          </div>
+        </div>
+
+        <!-- Listener Audio Controls -->
+        <div class="mt-5 flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center space-x-3">
+            <button id="mainPlayBtn" class="w-12 h-12 rounded-full bg-neonCyan text-darkBg flex items-center justify-center font-bold hover:scale-105 transition glow-cyan">
+              <i class="fa-solid fa-play text-lg" id="mainPlayIcon"></i>
+            </button>
+            <div>
+              <span class="text-xs font-semibold text-gray-200 block">Stream Output</span>
+              <span id="audioSourceText" class="text-[10px] font-mono text-cyan-400">Automated Synth Backup</span>
+            </div>
+          </div>
+
+          <!-- Volume Control -->
+          <div class="flex items-center space-x-2">
+            <button id="muteBtn" class="p-2 text-gray-400 hover:text-white transition">
+              <i class="fa-solid fa-volume-high text-sm" id="muteIcon"></i>
+            </button>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8" class="w-24 sm:w-32">
+          </div>
+        </div>
+      </div>
+
+      <!-- Station Master Equalizer Panel -->
+      <div class="bg-panelBg border border-cyan-900/30 backdrop-blur-xl rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-sliders text-neonPink"></i>
+            <h3 class="font-display text-xs font-bold tracking-wider text-white">MASTER AUDIO EQUALIZER</h3>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs">
+            <span class="text-gray-400 mr-1 hidden sm:inline text-[11px]">Presets:</span>
+            <button class="eq-preset-btn px-2.5 py-1 rounded bg-cyan-950 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/50 transition text-xs" data-preset="flat">Flat</button>
+            <button class="eq-preset-btn px-2.5 py-1 rounded bg-gray-800/60 border border-gray-700/60 text-gray-300 hover:bg-cyan-900/50 transition text-xs" data-preset="bass">Bass</button>
+            <button class="eq-preset-btn px-2.5 py-1 rounded bg-gray-800/60 border border-gray-700/60 text-gray-300 hover:bg-cyan-900/50 transition text-xs" data-preset="chill">Chill</button>
+            <button class="eq-preset-btn px-2.5 py-1 rounded bg-gray-800/60 border border-gray-700/60 text-gray-300 hover:bg-cyan-900/50 transition text-xs" data-preset="vocal">Vocal</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-darkBg/60 p-2.5 rounded-xl border border-gray-800 flex flex-col items-center">
+            <span class="text-[10px] font-mono text-gray-400 mb-1">BASS (60Hz)</span>
+            <input type="range" id="bassSlider" min="-12" max="12" value="0" step="0.5" class="w-full">
+            <span id="bassVal" class="text-[11px] font-mono text-neonCyan mt-1">0 dB</span>
+          </div>
+          <div class="bg-darkBg/60 p-2.5 rounded-xl border border-gray-800 flex flex-col items-center">
+            <span class="text-[10px] font-mono text-gray-400 mb-1">MID (1kHz)</span>
+            <input type="range" id="midSlider" min="-12" max="12" value="0" step="0.5" class="w-full">
+            <span id="midVal" class="text-[11px] font-mono text-neonCyan mt-1">0 dB</span>
+          </div>
+          <div class="bg-darkBg/60 p-2.5 rounded-xl border border-gray-800 flex flex-col items-center">
+            <span class="text-[10px] font-mono text-gray-400 mb-1">TREBLE (8kHz)</span>
+            <input type="range" id="trebleSlider" min="-12" max="12" value="0" step="0.5" class="w-full">
+            <span id="trebleVal" class="text-[11px] font-mono text-neonCyan mt-1">0 dB</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADMIN ONLY CONSOLE (Visible only when authenticated) -->
+      <div id="adminConsolePanel" class="bg-adminBg border border-pink-900/50 backdrop-blur-xl rounded-2xl p-5 sm:p-6 shadow-2xl space-y-5 hidden">
+        <div class="flex items-center justify-between border-b border-pink-900/40 pb-3">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-pink-500 animate-ping"></span>
+            <h3 class="font-display text-sm font-bold tracking-wider text-pink-300">ADMIN DJ BROADCAST CONSOLE</h3>
+          </div>
+          <button id="lockAdminBtn" class="text-xs text-gray-400 hover:text-red-400 transition flex items-center gap-1">
+            <i class="fa-solid fa-lock"></i> Lock Console
+          </button>
+        </div>
+
+        <!-- MP3/WAV Upload Area -->
+        <div>
+          <label class="text-xs font-medium text-gray-300 mb-2 block">Upload Music Files (MP3 / WAV)</label>
+          <div id="dropzone" class="border-2 border-dashed border-pink-700/50 hover:border-neonPink bg-darkBg/60 rounded-xl p-5 text-center cursor-pointer transition flex flex-col items-center group">
+            <input type="file" id="fileInput" accept=".mp3, .wav, audio/mpeg, audio/wav" multiple class="hidden">
+            <i class="fa-solid fa-cloud-arrow-up text-2xl text-neonPink mb-2 group-hover:scale-110 transition"></i>
+            <p class="text-xs font-semibold text-gray-200">Drag & Drop MP3 / WAV Tracks Here</p>
+            <p class="text-[11px] text-gray-400 mt-1">Only authenticated admins can add broadcast media to playlist</p>
+          </div>
+        </div>
+
+        <!-- Quick Station Jingles & Sweep Trigger Buttons -->
+        <div>
+          <label class="text-xs font-medium text-gray-300 mb-2 block">Instant Station Jingles & Drops</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button id="jingle1" class="jingle-btn px-3 py-2 bg-pink-950/70 border border-pink-700/60 rounded-xl text-xs font-mono text-pink-200 hover:bg-pink-900/80 transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-bullhorn text-neonPink"></i> Station ID Voice
+            </button>
+            <button id="jingle2" class="jingle-btn px-3 py-2 bg-pink-950/70 border border-pink-700/60 rounded-xl text-xs font-mono text-pink-200 hover:bg-pink-900/80 transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-bolt text-yellow-400"></i> Cyber Sweep
+            </button>
+            <button id="jingle3" class="jingle-btn px-3 py-2 bg-pink-950/70 border border-pink-700/60 rounded-xl text-xs font-mono text-pink-200 hover:bg-pink-900/80 transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-drum text-cyan-400"></i> Bass Drop
+            </button>
+            <button id="forceSynthBtn" class="px-3 py-2 bg-cyan-950/70 border border-cyan-700/60 rounded-xl text-xs font-mono text-cyan-200 hover:bg-cyan-900/80 transition flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-radio text-neonCyan"></i> Force Synth Radio
+            </button>
+          </div>
+        </div>
+
+        <!-- Moderation: Song Requests Queue -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-gray-300">Listener Request Moderation Box</span>
+            <span id="requestBadge" class="text-[10px] font-mono text-amber-300 bg-amber-950 px-2 py-0.5 rounded border border-amber-800">0 Pending</span>
+          </div>
+          <div id="adminRequestsList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1 bg-darkBg/60 p-2 rounded-xl border border-gray-800">
+            <p class="text-xs text-gray-500 text-center py-3">No listener requests currently pending.</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Sidebar Column: Live Playlist Queue, Chat & Schedule (4 Cols) -->
+    <section class="lg:col-span-4 flex flex-col gap-6">
+
+      <!-- Station Live Playlist Queue -->
+      <div class="bg-panelBg border border-cyan-900/30 backdrop-blur-xl rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-list-ul text-neonCyan"></i>
+            <h3 class="font-display text-xs font-bold tracking-wider text-white">BROADCAST QUEUE</h3>
+          </div>
+          <span id="playlistCount" class="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 border border-cyan-800/60 px-2 py-0.5 rounded-full">
+            1 Track
+          </span>
+        </div>
+
+        <div id="playlistItems" class="space-y-2 max-h-56 overflow-y-auto pr-1 flex-grow">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Station Live Chat & Listener Song Request Box -->
+      <div class="bg-panelBg border border-cyan-900/30 backdrop-blur-xl rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col h-72">
+        <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-800">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-comments text-neonPink text-xs"></i>
+            <h3 class="font-display text-xs font-bold tracking-wider text-white">LIVE CHAT & REQUESTS</h3>
+          </div>
+          <span class="text-[10px] text-gray-400">Listeners Room</span>
+        </div>
+
+        <!-- Chat Stream Messages -->
+        <div id="chatMessages" class="flex-grow overflow-y-auto space-y-2 text-xs pr-1 mb-2">
+          <div class="bg-gray-900/70 p-2 rounded-lg border border-gray-800">
+            <span class="text-neonCyan font-bold">PulseBot:</span>
+            <span class="text-gray-300">Welcome to PULSE FM 24/7. Request your favorite synth tracks below!</span>
+          </div>
+        </div>
+
+        <!-- Chat Input Form -->
+        <form id="chatForm" class="flex gap-2">
+          <input type="text" id="chatInput" placeholder="Send msg or type 'request: Song Title'..." class="flex-grow bg-darkBg border border-gray-800 focus:border-neonCyan rounded-xl px-3 py-1.5 text-xs text-gray-200 outline-none">
+          <button type="submit" class="px-3 py-1.5 bg-neonCyan text-darkBg rounded-xl text-xs font-bold hover:opacity-90 transition">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </form>
+      </div>
+
+      <!-- 24/7 Station Broadcast Schedule -->
+      <div class="bg-panelBg border border-cyan-900/30 backdrop-blur-xl rounded-2xl p-4 sm:p-5 shadow-xl">
+        <div class="flex items-center space-x-2 mb-3">
+          <i class="fa-solid fa-calendar-days text-neonAmber"></i>
+          <h3 class="font-display text-xs font-bold tracking-wider text-white">DAILY BROADCAST SCHEDULE</h3>
+        </div>
+        <div class="space-y-2 text-xs font-mono">
+          <div class="flex justify-between p-2 rounded-lg bg-cyan-950/40 border border-cyan-800/40 text-cyan-300">
+            <span>00:00 - 08:00</span>
+            <span class="font-bold">24/7 Synth Ambient Radio</span>
+          </div>
+          <div class="flex justify-between p-2 rounded-lg bg-darkBg/60 border border-gray-800 text-gray-400">
+            <span>08:00 - 16:00</span>
+            <span>Admin Live DJ Request Hour</span>
+          </div>
+          <div class="flex justify-between p-2 rounded-lg bg-darkBg/60 border border-gray-800 text-gray-400">
+            <span>16:00 - 00:00</span>
+            <span>Cyberwave Night Beat Stream</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 bg-darkBg/95 border border-neonCyan text-white px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md transform translate-y-24 opacity-0 transition-all duration-300 flex items-center gap-3 max-w-sm">
+    <i id="toastIcon" class="fa-solid fa-circle-info text-neonCyan"></i>
+    <span id="toastMsg" class="text-xs font-medium">Notification message</span>
+  </div>
+
+  <footer class="relative z-10 w-full border-t border-gray-900 bg-darkBg/90 py-3.5 px-6 text-center text-xs text-gray-400 font-mono">
+    PULSE FM 24/7 Radio Station Engine &bull; Web Audio API Broadcast Receiver
+  </footer>
+
+  <!-- JavaScript Audio Engine, Auth & Station Logic -->
+  <script>
+    /* ==========================================================================
+       PULSE FM 24/7 BROADCAST ENGINE
+       ========================================================================== */
+
+    const ADMIN_PASSCODE = 'spendzaspadez0311';
+
+    const state = {
+      isAdmin: false,
+      playlist: [],
+      requests: [],
+      currentIndex: 0,
+      isPlaying: false,
+      isMuted: false,
+      volume: 0.8,
+      visualizerMode: 'bars', // 'bars' | 'wave' | 'circle'
+      audioSourceType: 'synth', // 'synth' | 'uploaded'
+      synthPlaying: false,
+    };
+
+    // Web Audio API Context & Nodes
+    let audioCtx = null;
+    let audioElement = null;
+    let mediaSourceNode = null;
+    let analyserNode = null;
+    let bassFilterNode = null;
+    let midFilterNode = null;
+    let trebleFilterNode = null;
+    let gainNode = null;
+
+    // Synthesizer Loop Variables
+    let synthTimer = null;
+    let synthGainNode = null;
+
+    // Visualizer Canvases
+    let visualizerCanvas, visCtx;
+    let bgCanvas, bgCtx;
+
+    const elements = {
+      startStreamBtn: document.getElementById('startStreamBtn'),
+      playOverlay: document.getElementById('playOverlay'),
+      mainPlayBtn: document.getElementById('mainPlayBtn'),
+      mainPlayIcon: document.getElementById('mainPlayIcon'),
+      muteBtn: document.getElementById('muteBtn'),
+      muteIcon: document.getElementById('muteIcon'),
+      volumeSlider: document.getElementById('volumeSlider'),
+      progressBar: document.getElementById('progressBar'),
+      progressBarContainer: document.getElementById('progressBarContainer'),
+      currentTime: document.getElementById('currentTime'),
+      durationTime: document.getElementById('durationTime'),
+      currentTrackTitle: document.getElementById('currentTrackTitle'),
+      currentTrackArtist: document.getElementById('currentTrackArtist'),
+      audioSourceText: document.getElementById('audioSourceText'),
+      playlistItems: document.getElementById('playlistItems'),
+      playlistCount: document.getElementById('playlistCount'),
+      fileInput: document.getElementById('fileInput'),
+      dropzone: document.getElementById('dropzone'),
+      visModeBtn: document.getElementById('visModeBtn'),
+      visModeText: document.getElementById('visModeText'),
+      bassSlider: document.getElementById('bassSlider'),
+      midSlider: document.getElementById('midSlider'),
+      trebleSlider: document.getElementById('trebleSlider'),
+      bassVal: document.getElementById('bassVal'),
+      midVal: document.getElementById('midVal'),
+      trebleVal: document.getElementById('trebleVal'),
+      listenerCount: document.getElementById('listenerCount'),
+      // Auth & Role Elements
+      viewListenerBtn: document.getElementById('viewListenerBtn'),
+      viewAdminBtn: document.getElementById('viewAdminBtn'),
+      adminLockIcon: document.getElementById('adminLockIcon'),
+      authModal: document.getElementById('authModal'),
+      authForm: document.getElementById('authForm'),
+      passcodeInput: document.getElementById('passcodeInput'),
+      closeAuthModal: document.getElementById('closeAuthModal'),
+      adminConsolePanel: document.getElementById('adminConsolePanel'),
+      lockAdminBtn: document.getElementById('lockAdminBtn'),
+      adminRequestsList: document.getElementById('adminRequestsList'),
+      requestBadge: document.getElementById('requestBadge'),
+      // Chat Elements
+      chatMessages: document.getElementById('chatMessages'),
+      chatForm: document.getElementById('chatForm'),
+      chatInput: document.getElementById('chatInput'),
+    };
+
+    const SYNTH_DEFAULT_TRACK = {
+      id: 'synth-default',
+      title: 'PULSE 24/7 Automated Backup Radio',
+      artist: 'Procedural Web Audio Synthesizer Engine',
+      duration: 'Continuous',
+      isSynth: true,
+      url: null
+    };
+
+    window.onload = function() {
+      initAudioElement();
+      initCanvases();
+      setupEventListeners();
+      setupEqualizer();
+      renderPlaylist();
+      renderRequests();
+      startListenerSimulation();
+      startBgAnimation();
+    };
+
+    function initAudioElement() {
+      audioElement = new Audio();
+      audioElement.crossOrigin = 'anonymous';
+
+      audioElement.addEventListener('ended', onTrackEnded);
+      audioElement.addEventListener('timeupdate', updateProgress);
+      audioElement.addEventListener('loadedmetadata', () => {
+        elements.durationTime.textContent = formatTime(audioElement.duration);
+      });
+      audioElement.addEventListener('error', () => {
+        showToast('Stream playback error. Reverting to 24/7 backup radio.', 'warning');
+        switchToSynthStream();
+      });
+    }
+
+    function initWebAudioAPI() {
+      if (audioCtx) return;
+
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+
+        analyserNode = audioCtx.createAnalyser();
+        analyserNode.fftSize = 256;
+
+        bassFilterNode = audioCtx.createBiquadFilter();
+        bassFilterNode.type = 'lowshelf';
+        bassFilterNode.frequency.value = 100;
+
+        midFilterNode = audioCtx.createBiquadFilter();
+        midFilterNode.type = 'peaking';
+        midFilterNode.frequency.value = 1000;
+        midFilterNode.Q.value = 0.5;
+
+        trebleFilterNode = audioCtx.createBiquadFilter();
+        trebleFilterNode.type = 'highshelf';
+        trebleFilterNode.frequency.value = 8000;
+
+        gainNode = audioCtx.createGain();
+        gainNode.gain.value = state.volume;
+
+        mediaSourceNode = audioCtx.createMediaElementSource(audioElement);
+        mediaSourceNode.connect(bassFilterNode);
+        bassFilterNode.connect(midFilterNode);
+        midFilterNode.connect(trebleFilterNode);
+        trebleFilterNode.connect(gainNode);
+        gainNode.connect(analyserNode);
+        analyserNode.connect(audioCtx.destination);
+
+        synthGainNode = audioCtx.createGain();
+        synthGainNode.gain.value = 0.35;
+        synthGainNode.connect(bassFilterNode);
+
+        elements.playOverlay.classList.add('opacity-0', 'pointer-events-none');
+        drawVisualizer();
+      } catch (err) {
+        console.error('Web Audio API initialized failed', err);
+      }
+    }
+
+    /* ==========================================================================
+       SYNTHESIZER & JINGLE VOICE ENGINE
+       ========================================================================== */
+
+    function startSynthStream() {
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      state.synthPlaying = true;
+      state.audioSourceType = 'synth';
+      elements.audioSourceText.textContent = 'Automated Synth Backup';
+      elements.durationTime.textContent = '24/7 Continuous';
+
+      playSynthChord();
+      if (synthTimer) clearInterval(synthTimer);
+      synthTimer = setInterval(playSynthChord, 4500);
+    }
+
+    function stopSynthStream() {
+      state.synthPlaying = false;
+      if (synthTimer) {
+        clearInterval(synthTimer);
+        synthTimer = null;
+      }
+    }
+
+    function playSynthChord() {
+      if (!state.synthPlaying || !audioCtx) return;
+
+      const chords = [
+        [130.81, 164.81, 196.00, 246.94], // Cmaj7
+        [146.83, 174.61, 220.00, 261.63], // Dm7
+        [110.00, 130.81, 164.81, 196.00], // Am7
+        [174.61, 220.00, 261.63, 329.63]  // Fmaj7
+      ];
+
+      const chord = chords[Math.floor(Math.random() * chords.length)];
+      const now = audioCtx.currentTime;
+
+      chord.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const noteGain = audioCtx.createGain();
+
+        osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.detune.setValueAtTime((Math.random() - 0.5) * 15, now);
+
+        noteGain.gain.setValueAtTime(0, now);
+        noteGain.gain.linearRampToValueAtTime(0.08, now + 1.5);
+        noteGain.gain.exponentialRampToValueAtTime(0.0001, now + 4.2);
+
+        osc.connect(noteGain);
+        noteGain.connect(synthGainNode);
+
+        osc.start(now);
+        osc.stop(now + 4.3);
+      });
+    }
+
+    // Trigger Instant Admin Station Jingles
+    function playJingle(type) {
+      if (!audioCtx || !state.isAdmin) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'voice') {
+        // Speech Synthesis for Station ID
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance("You are listening to PULSE FM, 24/7 Global Audio Stream");
+          utterance.pitch = 0.9;
+          utterance.rate = 1.0;
+          window.speechSynthesis.speak(utterance);
+          showToast('Triggered Station ID Voice Jingle');
+        }
+      } else if (type === 'sweep') {
+        const osc = audioCtx.createOscillator();
+        const sweepGain = audioCtx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(2400, now + 1.2);
+
+        sweepGain.gain.setValueAtTime(0.2, now);
+        sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+        osc.connect(sweepGain);
+        sweepGain.connect(bassFilterNode);
+
+        osc.start(now);
+        osc.stop(now + 1.3);
+        showToast('Triggered Cyber Sweep Drop');
+      } else if (type === 'bass') {
+        const osc = audioCtx.createOscillator();
+        const bassGain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.8);
+
+        bassGain.gain.setValueAtTime(0.4, now);
+        bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+        osc.connect(bassGain);
+        bassGain.connect(bassFilterNode);
+
+        osc.start(now);
+        osc.stop(now + 1.0);
+        showToast('Triggered Bass Impact Drop');
+      }
+    }
+
+    /* ==========================================================================
+       PLAYBACK & STREAM CONTROL
+       ========================================================================== */
+
+    function togglePlay() {
+      if (!audioCtx) initWebAudioAPI();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      if (state.isPlaying) {
+        pauseStream();
+      } else {
+        playStream();
+      }
+    }
+
+    function playStream() {
+      state.isPlaying = true;
+      updatePlayButtonUI(true);
+
+      if (state.playlist.length > 0) {
+        stopSynthStream();
+        const currentTrack = state.playlist[state.currentIndex];
+        if (currentTrack && !currentTrack.isSynth) {
+          if (audioElement.src !== currentTrack.url) {
+            audioElement.src = currentTrack.url;
+          }
+          audioElement.play().catch(switchToSynthStream);
+          state.audioSourceType = 'uploaded';
+          elements.audioSourceText.textContent = 'Admin Broadcast Track';
+        } else {
+          switchToSynthStream();
+        }
+      } else {
+        switchToSynthStream();
+      }
+    }
+
+    function pauseStream() {
+      state.isPlaying = false;
+      updatePlayButtonUI(false);
+      if (state.audioSourceType === 'uploaded') {
+        audioElement.pause();
+      } else {
+        stopSynthStream();
+      }
+    }
+
+    function switchToSynthStream() {
+      state.audioSourceType = 'synth';
+      audioElement.pause();
+      startSynthStream();
+      updateCurrentTrackDisplay(SYNTH_DEFAULT_TRACK);
+      renderPlaylist();
+    }
+
+    function playTrackAtIndex(index) {
+      if (index < 0 || index >= state.playlist.length) return;
+      state.currentIndex = index;
+      const track = state.playlist[index];
+
+      if (track.isSynth) {
+        switchToSynthStream();
+      } else {
+        stopSynthStream();
+        state.audioSourceType = 'uploaded';
+        elements.audioSourceText.textContent = 'Admin Broadcast Track';
+        audioElement.src = track.url;
+        audioElement.play().catch(console.error);
+        state.isPlaying = true;
+        updatePlayButtonUI(true);
+        updateCurrentTrackDisplay(track);
+      }
+      renderPlaylist();
+    }
+
+    function onTrackEnded() {
+      if (state.playlist.length > 0) {
+        state.currentIndex = (state.currentIndex + 1) % state.playlist.length;
+        playTrackAtIndex(state.currentIndex);
+      } else {
+        switchToSynthStream();
+      }
+    }
+
+    function updatePlayButtonUI(playing) {
+      elements.mainPlayIcon.className = playing ? 'fa-solid fa-pause text-lg' : 'fa-solid fa-play text-lg ml-0.5';
+    }
+
+    function updateCurrentTrackDisplay(track) {
+      elements.currentTrackTitle.textContent = track.title;
+      elements.currentTrackArtist.textContent = track.artist || 'PULSE FM Admin';
+    }
+
+    function updateProgress() {
+      if (state.audioSourceType === 'synth' || !audioElement.duration) {
+        elements.currentTime.textContent = '00:00';
+        elements.progressBar.style.width = '100%';
+        return;
+      }
+      const pct = (audioElement.currentTime / audioElement.duration) * 100;
+      elements.progressBar.style.width = `${pct}%`;
+      elements.currentTime.textContent = formatTime(audioElement.currentTime);
+    }
+
+    function seekAudio(e) {
+      if (state.audioSourceType === 'synth' || !audioElement.duration) return;
+      const rect = elements.progressBarContainer.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      audioElement.currentTime = (clickX / rect.width) * audioElement.duration;
+    }
+
+    /* ==========================================================================
+       ADMIN AUTH & FILE UPLOAD MANAGEMENT
+       ========================================================================== */
+
+    function unlockAdminConsole() {
+      state.isAdmin = true;
+      elements.viewListenerBtn.className = 'px-3 py-1 text-xs rounded-lg font-medium text-gray-400 hover:text-white transition';
+      elements.viewAdminBtn.className = 'px-3 py-1 text-xs rounded-lg font-medium transition text-white bg-pink-950 border border-pink-700/60 glow-pink';
+      elements.adminLockIcon.className = 'fa-solid fa-lock-open text-xs mr-1 text-neonPink';
+      elements.adminConsolePanel.classList.remove('hidden');
+      elements.authModal.classList.add('hidden');
+      showToast('Admin DJ Console Unlocked! Upload & Moderation active.');
+      renderPlaylist();
+    }
+
+    function lockAdminConsole() {
+      state.isAdmin = false;
+      elements.viewListenerBtn.className = 'px-3 py-1 text-xs rounded-lg font-medium transition text-white bg-cyan-950 border border-cyan-700/60';
+      elements.viewAdminBtn.className = 'px-3 py-1 text-xs rounded-lg font-medium text-gray-400 hover:text-white transition';
+      elements.adminLockIcon.className = 'fa-solid fa-lock text-xs mr-1';
+      elements.adminConsolePanel.classList.add('hidden');
+      showToast('Returned to Listener View');
+      renderPlaylist();
+    }
+
+    function handleAdminFiles(files) {
+      if (!state.isAdmin) {
+        showToast('Only authenticated Admins can upload tracks!', 'warning');
+        return;
+      }
+
+      const validFiles = Array.from(files).filter(file => 
+        file.type.includes('audio/mpeg') || file.type.includes('audio/wav') || file.name.endsWith('.mp3') || file.name.endsWith('.wav')
+      );
+
+      if (validFiles.length === 0) {
+        showToast('Please upload valid MP3 or WAV audio files.', 'warning');
+        return;
+      }
+
+      validFiles.forEach(file => {
+        const objectUrl = URL.createObjectURL(file);
+        state.playlist.push({
+          id: 'track-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          title: file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "),
+          artist: 'PULSE FM Admin',
+          file: file,
+          url: objectUrl,
+          isSynth: false
+        });
+      });
+
+      showToast(`Added ${validFiles.length} file(s) to station queue.`);
+
+      if (state.audioSourceType === 'synth' && state.playlist.length > 0) {
+        state.currentIndex = state.playlist.length - validFiles.length;
+        if (state.isPlaying) playTrackAtIndex(state.currentIndex);
+      }
+
+      renderPlaylist();
+    }
+
+    function renderPlaylist() {
+      elements.playlistItems.innerHTML = '';
+      const total = state.playlist.length + 1;
+      elements.playlistCount.textContent = `${total} Track${total > 1 ? 's' : ''}`;
+
+      // Render Synth Station Row
+      const isSynthActive = state.audioSourceType === 'synth';
+      const synthRow = document.createElement('div');
+      synthRow.className = `flex items-center justify-between p-2.5 rounded-xl border transition ${
+        isSynthActive ? 'bg-cyan-950/60 border-neonCyan text-white' : 'bg-darkBg/60 border-gray-800 text-gray-300'
+      }`;
+      synthRow.innerHTML = `
+        <div class="flex items-center space-x-2.5 overflow-hidden">
+          <div class="w-7 h-7 rounded-lg ${isSynthActive ? 'bg-neonCyan text-darkBg' : 'bg-gray-800 text-cyan-400'} flex items-center justify-center text-xs flex-shrink-0">
+            <i class="fa-solid fa-radio"></i>
+          </div>
+          <div class="truncate">
+            <h4 class="text-xs font-semibold truncate ${isSynthActive ? 'text-neonCyan' : 'text-gray-200'}">PULSE 24/7 Backup Radio</h4>
+            <p class="text-[10px] text-gray-400">Automated Synth Stream</p>
+          </div>
+        </div>
+        <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/50">24/7</span>
+      `;
+      synthRow.onclick = () => {
+        switchToSynthStream();
+        if (!state.isPlaying) playStream();
+      };
+      elements.playlistItems.appendChild(synthRow);
+
+      // Render Admin Playlist Tracks
+      state.playlist.forEach((track, idx) => {
+        const isActive = state.audioSourceType === 'uploaded' && state.currentIndex === idx;
+        const item = document.createElement('div');
+        item.className = `flex items-center justify-between p-2.5 rounded-xl border transition ${
+          isActive ? 'bg-pink-950/60 border-neonPink text-white shadow-lg' : 'bg-darkBg/60 border-gray-800 text-gray-300'
+        }`;
+
+        item.innerHTML = `
+          <div class="flex items-center space-x-2.5 overflow-hidden flex-grow cursor-pointer" onclick="playTrackAtIndex(${idx})">
+            <div class="w-7 h-7 rounded-lg ${isActive ? 'bg-neonPink text-white' : 'bg-gray-800 text-gray-400'} flex items-center justify-center font-mono text-xs flex-shrink-0">
+              ${isActive ? '<i class="fa-solid fa-volume-high"></i>' : (idx + 1)}
+            </div>
+            <div class="truncate">
+              <h4 class="text-xs font-semibold truncate ${isActive ? 'text-neonPink' : 'text-gray-200'}">${escapeHtml(track.title)}</h4>
+              <p class="text-[10px] text-gray-400 truncate">${escapeHtml(track.artist)}</p>
+            </div>
+          </div>
+          ${state.isAdmin ? `
+            <button class="remove-btn text-gray-500 hover:text-red-400 p-1.5 transition rounded-lg" title="Remove Track">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          ` : ''}
+        `;
+
+        if (state.isAdmin) {
+          const removeBtn = item.querySelector('.remove-btn');
+          removeBtn.onclick = (e) => {
+            e.stopPropagation();
+            removeTrack(idx);
+          };
+        }
+
+        elements.playlistItems.appendChild(item);
+      });
+    }
+
+    function removeTrack(index) {
+      if (!state.isAdmin) return;
+      const removed = state.playlist.splice(index, 1)[0];
+      if (removed && removed.url) URL.revokeObjectURL(removed.url);
+
+      if (state.audioSourceType === 'uploaded' && state.currentIndex === index) {
+        if (state.playlist.length > 0) {
+          state.currentIndex = state.currentIndex % state.playlist.length;
+          playTrackAtIndex(state.currentIndex);
+        } else {
+          switchToSynthStream();
+        }
+      }
+      renderPlaylist();
+    }
+
+    /* ==========================================================================
+       CHAT & LISTENER SONG REQUEST MODERATION
+       ========================================================================== */
+
+    function handleChatMessage(e) {
+      e.preventDefault();
+      const msg = elements.chatInput.value.trim();
+      if (!msg) return;
+
+      addChatMessage('Listener', msg);
+
+      // Check if user submitted a track request
+      if (msg.toLowerCase().startsWith('request:')) {
+        const songName = msg.substring(8).trim();
+        if (songName) {
+          state.requests.push({ id: Date.now(), title: songName });
+          renderRequests();
+          showToast(`Request for "${songName}" sent to DJ!`);
+        }
+      }
+
+      elements.chatInput.value = '';
+    }
+
+    function addChatMessage(user, text) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'bg-gray-900/70 p-2 rounded-lg border border-gray-800';
+      msgDiv.innerHTML = `<span class="text-neonCyan font-bold">${escapeHtml(user)}:</span> <span class="text-gray-300">${escapeHtml(text)}</span>`;
+      elements.chatMessages.appendChild(msgDiv);
+      elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+    }
+
+    function renderRequests() {
+      elements.requestBadge.textContent = `${state.requests.length} Pending`;
+      elements.adminRequestsList.innerHTML = '';
+
+      if (state.requests.length === 0) {
+        elements.adminRequestsList.innerHTML = '<p class="text-xs text-gray-500 text-center py-3">No listener requests pending.</p>';
+        return;
+      }
+
+      state.requests.forEach((req, idx) => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-2 bg-pink-950/40 border border-pink-900/40 rounded-lg text-xs';
+        item.innerHTML = `
+          <span class="text-pink-200 truncate max-w-[180px]">${escapeHtml(req.title)}</span>
+          <div class="flex items-center space-x-1">
+            <button class="px-2 py-0.5 bg-green-950 text-green-300 border border-green-800 rounded text-[10px]" onclick="approveRequest(${idx})">Acknowledge</button>
+            <button class="px-2 py-0.5 bg-red-950 text-red-300 border border-red-800 rounded text-[10px]" onclick="dismissRequest(${idx})">Dismiss</button>
+          </div>
+        `;
+        elements.adminRequestsList.appendChild(item);
+      });
+    }
+
+    window.approveRequest = (idx) => {
+      const req = state.requests.splice(idx, 1)[0];
+      renderRequests();
+      addChatMessage('DJ Admin', `Acknowledged request for: "${req.title}". Standby for broadcast!`);
+    };
+
+    window.dismissRequest = (idx) => {
+      state.requests.splice(idx, 1);
+      renderRequests();
+    };
+
+    /* ==========================================================================
+       CANVAS FFT VISUALIZER & BACKGROUND ANIMATION
+       ========================================================================== */
+
+    function initCanvases() {
+      visualizerCanvas = document.getElementById('visualizerCanvas');
+      visCtx = visualizerCanvas.getContext('2d');
+      bgCanvas = document.getElementById('bgCanvas');
+      bgCtx = bgCanvas.getContext('2d');
+
+      resizeCanvases();
+      window.addEventListener('resize', resizeCanvases);
+    }
+
+    function resizeCanvases() {
+      if (visualizerCanvas) {
+        visualizerCanvas.width = visualizerCanvas.parentElement.clientWidth;
+        visualizerCanvas.height = visualizerCanvas.parentElement.clientHeight;
+      }
+      if (bgCanvas) {
+        bgCanvas.width = window.innerWidth;
+        bgCanvas.height = window.innerHeight;
+      }
+    }
+
+    function drawVisualizer() {
+      requestAnimationFrame(drawVisualizer);
+      const w = visualizerCanvas.width;
+      const h = visualizerCanvas.height;
+
+      visCtx.clearRect(0, 0, w, h);
+
+      let dataArray = new Uint8Array(64);
+      if (analyserNode && state.isPlaying) {
+        analyserNode.getByteFrequencyData(dataArray);
+      } else {
+        const time = Date.now() * 0.003;
+        for (let i = 0; i < 64; i++) {
+          dataArray[i] = Math.sin(time + i * 0.1) * 15 + 20;
+        }
+      }
+
+      if (state.visualizerMode === 'bars') {
+        const barWidth = (w / dataArray.length) * 1.5;
+        let x = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const barHeight = (dataArray[i] / 255) * (h * 0.85);
+          const gradient = visCtx.createLinearGradient(0, h, 0, h - barHeight);
+          gradient.addColorStop(0, '#00f3ff');
+          gradient.addColorStop(0.6, '#8a2be2');
+          gradient.addColorStop(1, '#ff007f');
+
+          visCtx.fillStyle = gradient;
+          visCtx.fillRect(x, h - barHeight, barWidth - 2, barHeight);
+          visCtx.fillStyle = '#ffffff';
+          visCtx.fillRect(x, h - barHeight - 2, barWidth - 2, 2);
+          x += barWidth + 1;
+        }
+      } else if (state.visualizerMode === 'wave') {
+        visCtx.beginPath();
+        visCtx.lineWidth = 3;
+        visCtx.strokeStyle = '#00f3ff';
+        const sliceWidth = w / dataArray.length;
+        let x = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = (v * h) / 2;
+          if (i === 0) visCtx.moveTo(x, y);
+          else visCtx.lineTo(x, y);
+          x += sliceWidth;
+        }
+        visCtx.lineTo(w, h / 2);
+        visCtx.stroke();
+      } else if (state.visualizerMode === 'circle') {
+        const cx = w / 2, cy = h / 2, r = Math.min(cx, cy) * 0.45;
+        visCtx.save();
+        visCtx.translate(cx, cy);
+        for (let i = 0; i < dataArray.length; i++) {
+          const angle = (i * 2 * Math.PI) / dataArray.length;
+          const barLen = (dataArray[i] / 255) * (r * 0.8);
+          visCtx.strokeStyle = `hsl(${(i * 5) % 360}, 100%, 60%)`;
+          visCtx.lineWidth = 3;
+          visCtx.beginPath();
+          visCtx.moveTo(Math.cos(angle) * r, Math.sin(angle) * r);
+          visCtx.lineTo(Math.cos(angle) * (r + barLen), Math.sin(angle) * (r + barLen));
+          visCtx.stroke();
+        }
+        visCtx.restore();
+      }
+    }
+
+    function startBgAnimation() {
+      let step = 0;
+      function renderBg() {
+        if (!bgCtx) return;
+        step += 0.005;
+        const w = bgCanvas.width, h = bgCanvas.height;
+        bgCtx.clearRect(0, 0, w, h);
+        for (let i = 0; i < 3; i++) {
+          bgCtx.beginPath();
+          bgCtx.lineWidth = 1.5;
+          bgCtx.strokeStyle = i % 2 === 0 ? 'rgba(0, 243, 255, 0.06)' : 'rgba(255, 0, 127, 0.06)';
+          for (let x = 0; x < w; x += 20) {
+            const y = Math.sin(x * 0.003 + step + i) * 50 + (h / 2) + (i * 40 - 40);
+            if (x === 0) bgCtx.moveTo(x, y);
+            else bgCtx.lineTo(x, y);
+          }
+          bgCtx.stroke();
+        }
+        requestAnimationFrame(renderBg);
+      }
+      renderBg();
+    }
+
+    /* ==========================================================================
+       EQUALIZER PRESETS & EVENT SETUP
+       ========================================================================== */
+
+    function setupEqualizer() {
+      elements.bassSlider.oninput = (e) => {
+        const val = parseFloat(e.target.value);
+        if (bassFilterNode) bassFilterNode.gain.value = val;
+        elements.bassVal.textContent = `${val > 0 ? '+' : ''}${val} dB`;
+      };
+      elements.midSlider.oninput = (e) => {
+        const val = parseFloat(e.target.value);
+        if (midFilterNode) midFilterNode.gain.value = val;
+        elements.midVal.textContent = `${val > 0 ? '+' : ''}${val} dB`;
+      };
+      elements.trebleSlider.oninput = (e) => {
+        const val = parseFloat(e.target.value);
+        if (trebleFilterNode) trebleFilterNode.gain.value = val;
+        elements.trebleVal.textContent = `${val > 0 ? '+' : ''}${val} dB`;
+      };
+
+      document.querySelectorAll('.eq-preset-btn').forEach(btn => {
+        btn.onclick = () => {
+          applyEqPreset(btn.dataset.preset);
+        };
+      });
+    }
+
+    function applyEqPreset(preset) {
+      let b = 0, m = 0, t = 0;
+      if (preset === 'bass') { b = 7; m = -1; t = 2; }
+      else if (preset === 'chill') { b = 3; m = 1; t = -3; }
+      else if (preset === 'vocal') { b = -2; m = 6; t = 3; }
+
+      elements.bassSlider.value = b;
+      elements.midSlider.value = m;
+      elements.trebleSlider.value = t;
+
+      elements.bassSlider.oninput({ target: { value: b } });
+      elements.midSlider.oninput({ target: { value: m } });
+      elements.trebleSlider.oninput({ target: { value: t } });
+    }
+
+    function setupEventListeners() {
+      elements.startStreamBtn.onclick = () => {
+        initWebAudioAPI();
+        playStream();
+      };
+
+      elements.mainPlayBtn.onclick = togglePlay;
+      elements.progressBarContainer.onclick = seekAudio;
+
+      elements.volumeSlider.oninput = (e) => {
+        state.volume = parseFloat(e.target.value);
+        if (gainNode) gainNode.gain.value = state.volume;
+        if (audioElement) audioElement.volume = state.volume;
+      };
+
+      elements.muteBtn.onclick = () => {
+        state.isMuted = !state.isMuted;
+        if (gainNode) gainNode.gain.value = state.isMuted ? 0 : state.volume;
+        if (audioElement) audioElement.volume = state.isMuted ? 0 : state.volume;
+      };
+
+      // Role Auth Events
+      elements.viewListenerBtn.onclick = () => {
+        if (state.isAdmin) lockAdminConsole();
+      };
+
+      elements.viewAdminBtn.onclick = () => {
+        if (state.isAdmin) {
+          unlockAdminConsole();
+        } else {
+          elements.authModal.classList.remove('hidden');
+        }
+      };
+
+      elements.closeAuthModal.onclick = () => elements.authModal.classList.add('hidden');
+
+      elements.authForm.onsubmit = (e) => {
+        e.preventDefault();
+        const entered = elements.passcodeInput.value.trim();
+        if (entered === ADMIN_PASSCODE) {
+          unlockAdminConsole();
+          elements.passcodeInput.value = '';
+        } else {
+          showToast('Invalid Passcode! Try admin123', 'warning');
+        }
+      };
+
+      elements.lockAdminBtn.onclick = lockAdminConsole;
+
+      // Admin File Drag & Drop
+      elements.dropzone.onclick = () => elements.fileInput.click();
+      elements.fileInput.onchange = (e) => handleAdminFiles(e.target.files);
+
+      elements.dropzone.ondragover = (e) => {
+        e.preventDefault();
+        elements.dropzone.classList.add('border-neonPink');
+      };
+      elements.dropzone.ondragleave = () => elements.dropzone.classList.remove('border-neonPink');
+      elements.dropzone.ondrop = (e) => {
+        e.preventDefault();
+        elements.dropzone.classList.remove('border-neonPink');
+        if (e.dataTransfer.files) handleAdminFiles(e.dataTransfer.files);
+      };
+
+      // Jingles
+      document.getElementById('jingle1').onclick = () => playJingle('voice');
+      document.getElementById('jingle2').onclick = () => playJingle('sweep');
+      document.getElementById('jingle3').onclick = () => playJingle('bass');
+      document.getElementById('forceSynthBtn').onclick = () => {
+        switchToSynthStream();
+        showToast('Forced switch to 24/7 Web Audio Synth Stream');
+      };
+
+      // Visualizer Mode
+      elements.visModeBtn.onclick = () => {
+        const modes = ['bars', 'wave', 'circle'];
+        state.visualizerMode = modes[(modes.indexOf(state.visualizerMode) + 1) % modes.length];
+        elements.visModeText.textContent = state.visualizerMode.toUpperCase();
+      };
+
+      // Live Chat
+      elements.chatForm.onsubmit = handleChatMessage;
+    }
+
+    function startListenerSimulation() {
+      let count = 1842;
+      setInterval(() => {
+        count = Math.max(1200, count + Math.floor(Math.random() * 9) - 4);
+        elements.listenerCount.textContent = count.toLocaleString();
+      }, 3500);
+    }
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.textContent = msg;
+      toastIcon.className = type === 'warning' ? 'fa-solid fa-triangle-exclamation text-yellow-400' : 'fa-solid fa-circle-info text-neonCyan';
+
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      setTimeout(() => toast.classList.add('translate-y-24', 'opacity-0'), 3500);
+    }
+
+    function formatTime(secs) {
+      if (isNaN(secs)) return '00:00';
+      const m = Math.floor(secs / 60);
+      const s = Math.floor(secs % 60);
+      return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
+</body>
+</html>
